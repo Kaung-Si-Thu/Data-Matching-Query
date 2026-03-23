@@ -1,0 +1,122 @@
+-- ============================================
+-- Identify Biz_2 Customers by NRC and Mobile Number
+-- ============================================
+
+WITH _getCustomerProfile AS (
+    SELECT 
+        CUSTOMER_ID,
+        CUSTOMER_ADDRESS,
+        CUSTOMER_MOBILE_1,
+        CUSTOMER_MOBILE_2,
+        CUSTOMER_MOBILE_3
+    FROM `DATA_MART_1.CUSTOMER_PROFILE_COMBI`
+    WHERE DATE_KEY = DATE_SUB(CURRENT_DATE('Asia/Rangoon'), INTERVAL 1 DAY)
+      AND IFNULL(IS_TEST, 0) = 0
+      AND IFNULL(IS_SYSTEM, 0) = 0
+      AND CUSTOMER_STATUS = 'ACTIVE'
+      AND CUSTOMER_KYC_LEVEL = 2
+      AND FLAG_WALLET_CUSTOMER = 1
+),
+_getRCustomerProfile AS (
+    SELECT 
+        CUSTOMER_ID,
+        CASE 
+            WHEN RIGHT(TRIM(CUSTOMER_FIRSTNAME), LENGTH(TRIM(CUSTOMER_LASTNAME))) = TRIM(CUSTOMER_LASTNAME)
+            THEN CUSTOMER_FIRSTNAME
+            ELSE CONCAT(TRIM(CUSTOMER_FIRSTNAME), IFNULL(CUSTOMER_LASTNAME, ''))
+        END AS CUSTOMER_NAME,
+        CUSTOMER_KYC_PRIMARY_IDENTITY_ID AS CUSTOMER_NRC,
+        CUSTOMER_MOBILE_1,
+        CUSTOMER_MOBILE_2,
+        CUSTOMER_MOBILE_3
+    FROM `DATA_MART_2.CUSTOMER_PROFILE_COMBI`
+    WHERE DATE_KEY = DATE_SUB(CURRENT_DATE('Asia/Rangoon'), INTERVAL 1 DAY)
+      AND IFNULL(IS_TEST, 0) = 0
+      AND IFNULL(IS_SYSTEM, 0) = 0
+      AND CUSTOMER_STATUS = 'ACTIVE'
+      AND CUSTOMER_KYC_LEVEL = 2
+),
+_checkBiz2Customers AS (
+    SELECT DISTINCT
+        R.CUSTOMER_ID,
+        M.Customer_Name,
+        M.Contact_Number,
+        M.NRC,
+        CASE 
+            WHEN COALESCE(R.CUSTOMER_ID) IS NOT NULL THEN 'Biz_2 Customers'
+            ELSE 'Not Biz_2 Customers' 
+        END AS Flag_Biz2_Customers
+    FROM `BI_WORKSPACE.test_Customers` M
+    LEFT JOIN _getCustomerProfile P
+        ON M.Contact_Number IN (P.CUSTOMER_MOBILE_1, P.CUSTOMER_MOBILE_2, P.CUSTOMER_MOBILE_3)
+    LEFT JOIN _getRCustomerProfile R
+        ON UPPER(REGEXP_REPLACE(M.NRC, r'\([^)]*\)', '()')) = UPPER(REGEXP_REPLACE(R.CUSTOMER_NRC, r'\([^)]*\)', '()'))
+       AND M.Contact_Number IN (R.CUSTOMER_MOBILE_1, R.CUSTOMER_MOBILE_2, R.CUSTOMER_MOBILE_3)
+    WHERE M.Flag_Biz2_Customers IS NULL
+       OR M.Flag_Biz2_Customers = ''
+       OR M.Flag_Biz2_Customers = 'Not Biz_2 Customers'
+)
+SELECT *
+FROM _checkBiz2Customers
+WHERE Flag_Biz2_Customers = 'Biz_2 Customers'
+ORDER BY CUSTOMER_ID;
+
+-- ============================================
+-- Update Biz_2 Flag in Biz_2 Customer Table
+-- ============================================
+
+MERGE `BI_WORKSPACE.test_Biz2_Customers` AS target
+USING `BI_WORKSPACE.vw_Biz2_Customers_check` AS source
+ON target.Contact_Number = source.Contact_Number
+   AND target.NRC = source.NRC
+WHEN MATCHED THEN
+  UPDATE SET
+    Flag_Biz2_Customers = source.Flag_Biz2_Customers;
+
+-- ============================================
+-- Identify Biz_2 Customers by Mobile Number Only
+-- ============================================
+
+WITH _checkBiz2CustomersByMobile AS (
+    SELECT DISTINCT
+        R.CUSTOMER_ID,
+        M.Customer_Name,
+        M.Contact_Number,
+        M.NRC,
+        CASE 
+            WHEN COALESCE(R.CUSTOMER_ID) IS NOT NULL THEN 'Biz_2 Customers By Mobile No.'
+            ELSE 'Not Biz_2 Customers' 
+        END AS Flag_Biz2_Customers
+    FROM `BI_WORKSPACE.test_Customers` M
+    LEFT JOIN _getCustomerProfile P
+        ON M.Contact_Number IN (P.CUSTOMER_MOBILE_1, P.CUSTOMER_MOBILE_2, P.CUSTOMER_MOBILE_3)
+    LEFT JOIN _getRCustomerProfile R
+        ON M.Contact_Number IN (R.CUSTOMER_MOBILE_1, R.CUSTOMER_MOBILE_2, R.CUSTOMER_MOBILE_3)
+    WHERE M.Flag_Biz2_Customers IS NULL
+       OR M.Flag_Biz2_Customers = ''
+       OR M.Flag_Biz2_Customers = 'Not Biz_2 Customers'
+)
+SELECT *
+FROM _checkBiz2CustomersByMobile
+WHERE Flag_Biz2_Customers = 'Biz_2 Customers By Mobile No.'
+ORDER BY CUSTOMER_ID;
+
+-- ============================================
+-- Update Biz_2 Flag in Customer Table
+-- ============================================
+
+MERGE `BI_WORKSPACE.test_Customers` AS target
+USING `BI_WORKSPACE.vw_Customers_check_2` AS source
+ON target.Contact_Number = source.Contact_Number
+   AND target.NRC = source.NRC
+WHEN MATCHED THEN
+  UPDATE SET
+    Flag_Biz2_Customers = source.Flag_Biz2_Customers;
+
+-- ============================================
+-- Extract Non-Biz_2 Customers
+-- ============================================
+
+SELECT Customer_Name, Contact_Number, NRC
+FROM `BI_WORKSPACE.test_Customers`
+WHERE Flag_Biz2_Customers NOT IN ('Biz_2 Customers', 'Biz_2 Customers By Mobile No.');
