@@ -1,4 +1,4 @@
-# Automated Customer KYC Matching Pipeline & Reconciliation System (BigQuery SQL)
+# Automated Customer KYC Matching Pipeline & Reconciliation System (Google BigQuery - SQL)
 
 ## Overview
 This project implements a **scalable data matching pipeline** designed to identify and reconcile customer records across multiple datasets. By leveraging National ID (NRC) and mobile numbers, the pipeline standardizes incoming data, applies a multi-level matching strategy, and ensures incremental updates to maintain an accurate, deduplicated customer profile.
@@ -20,8 +20,8 @@ The pipeline addresses these challenges by:
 4. **Updating datasets incrementally** via `MERGE` operations, enabling continuous processing.
 
 ## Data Sources
-- `BUSINESS_MARTS.CUSTOMER_PROFILE_COMBI`
-- `RISK_MARTS.CUSTOMER_PROFILE_COMBI`
+- `DATA_MARTS_1.CUSTOMER_PROFILE`
+- `DATA_MARTS_2.CUSTOMER_PROFILE`
 - Staging table for incoming customer data (`staging_customers`)
 
 ## Data Processing Workflow
@@ -56,67 +56,45 @@ ON target.Contact_Number = source.Contact_Number
 WHEN MATCHED THEN UPDATE
 SET target.Match_Status = source.Match_Status;
 
-6. Output Extraction
-Fully matched records (high confidence) for downstream use.
+### 6. Output Extraction
+- **Fully matched records** (high confidence) for downstream use.
+- **Partially matched records** for manual review.
+- **Unmatched records** for further investigation.
 
-Partially matched records for manual review.
+### Automation Strategy
+- Designed for **daily execution**.
+- Supports scheduling via **BigQuery Scheduled Queries**, **Apache Airflow**, or **Cron jobs**.
+- Implements **incremental matching** to process only new or unprocessed records.
 
-Unmatched records for further investigation.
+### Business Impact
+- **Improved customer data accuracy** and consistency.
+- **Reduced duplicate customer profiles**.
+- **Enhanced KYC validation** processes.
+- **Better decision-making** for analytics, marketing, and risk management.
 
-Automation Strategy
-Designed for daily execution.
+### Key Features
+- **Multi-level matching** (Exact + Partial)
+- **Data normalization** using regex
+- **Efficient mobile number joins** with `UNNEST`
+- **Incremental updates** via `MERGE`
+- **Scalable** for large datasets
 
-Supports scheduling via BigQuery Scheduled Queries, Apache Airflow, or Cron jobs.
+### Tech Stack
+- **SQL (BigQuery)**
+- Data Warehousing Concepts
+- Data Cleaning & Transformation
+- Incremental Data Processing
 
-Implements incremental matching to process only new or unprocessed records.
+### Skills Demonstrated
+- Data Engineering (ETL/ELT pipeline design)
+- Customer Identity Resolution
+- Data Quality Management
+- Query Optimization
+- Real-world business logic implementation
 
-Business Impact
-Improved customer data accuracy and consistency.
-
-Reduced duplicate customer profiles.
-
-Enhanced KYC validation processes.
-
-Better decision-making for analytics, marketing, and risk management.
-
-Key Features
-Multi-level matching (Exact + Partial)
-
-Data normalization using regex
-
-Efficient mobile number joins with UNNEST
-
-Incremental updates via MERGE
-
-Scalable for large datasets
-
-Tech Stack
-SQL (BigQuery)
-
-Data Warehousing Concepts
-
-Data Cleaning & Transformation
-
-Incremental Data Processing
-
-Skills Demonstrated
-Data Engineering (ETL/ELT pipeline design)
-
-Customer Identity Resolution
-
-Data Quality Management
-
-Query Optimization
-
-Real-world business logic implementation
-
-Future Improvements
-Implement fuzzy matching for name similarity (Levenshtein distance).
-
-Add scoring model for match confidence.
-
-Build dashboard for match monitoring and visualization.
-
-Integrate real-time streaming data.
-
-Automate reporting & notifications (Excel/CSV exports, email summaries).
+### Future Improvements
+- Implement **fuzzy matching** for name similarity (Levenshtein distance).
+- Add **scoring model** for match confidence.
+- Build **dashboard** for match monitoring and visualization.
+- Integrate **real-time streaming data**.
+- Automate **reporting & notifications** (Excel/CSV exports, email summaries).
