@@ -1,4 +1,4 @@
-# Automated Customer KYC Matching Pipeline & Reconciliation System (Google BigQuery - SQL)
+# Automated Customer KYC Matching Pipeline & Reconciliation System (Google BigQuery)
 
 ## Overview
 This project implements a **scalable data matching pipeline** designed to identify and reconcile customer records across multiple datasets. By leveraging National ID (NRC) and mobile numbers, the pipeline standardizes incoming data, applies a multi-level matching strategy, and ensures incremental updates to maintain an accurate, deduplicated customer profile.
