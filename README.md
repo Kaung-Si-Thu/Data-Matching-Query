@@ -55,7 +55,7 @@ ON target.Contact_Number = source.Contact_Number
    AND target.NRC = source.NRC
 WHEN MATCHED THEN UPDATE
 SET target.Match_Status = source.Match_Status;
-
+```
 ### 6. Output Extraction
 - **Fully matched records** (high confidence) for downstream use.
 - **Partially matched records** for manual review.
